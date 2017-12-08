@@ -5,6 +5,8 @@ VisualStudioVersion = 15.0.27004.2009
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "IrisExample", "IrisExample\IrisExample.pyproj", "{32154F57-C9DD-446A-865B-7B195D615010}"
 EndProject
+Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "AdultDataset", "AdultDataset\AdultDataset.pyproj", "{2AFCCEBA-71EF-4D37-A86A-4FD6E3DBD57A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -13,6 +15,8 @@ Global
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{32154F57-C9DD-446A-865B-7B195D615010}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{32154F57-C9DD-446A-865B-7B195D615010}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2AFCCEBA-71EF-4D37-A86A-4FD6E3DBD57A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2AFCCEBA-71EF-4D37-A86A-4FD6E3DBD57A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
