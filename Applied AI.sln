@@ -7,6 +7,8 @@ Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "IrisExample", "IrisExample\
 EndProject
 Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "AdultDataset", "AdultDataset\AdultDataset.pyproj", "{2AFCCEBA-71EF-4D37-A86A-4FD6E3DBD57A}"
 EndProject
+Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "Playing", "Playing\Playing.pyproj", "{CFC0C762-7450-4083-9617-A49C6E59680E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -17,6 +19,8 @@ Global
 		{32154F57-C9DD-446A-865B-7B195D615010}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2AFCCEBA-71EF-4D37-A86A-4FD6E3DBD57A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{2AFCCEBA-71EF-4D37-A86A-4FD6E3DBD57A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CFC0C762-7450-4083-9617-A49C6E59680E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CFC0C762-7450-4083-9617-A49C6E59680E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

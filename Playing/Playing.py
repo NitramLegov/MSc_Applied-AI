@@ -1,3 +1,5 @@
+
+
 import sys
 from matplotlib.backends.backend_template import new_figure_manager
 import scipy
@@ -19,17 +21,33 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.naive_bayes import GaussianNB
 from sklearn.svm import SVC
-import seaborn as sns
 import math
 
 #This code loads the dataset itself and defines the headers.
-headerNames = ['age', 'workclass', 'fnlwgt', 'education', 'education-num', 'marital-status', 'occupation', 'relationship', 'race', 'sex', 'capital-gain', 'capital-loss', 'hours-per-week', 'native-country', 'class']
-print('Downloading Data...')
-dataset = pandas.read_csv('adult.data', header=None, sep=',', names=headerNames)
 
-print("Download complete. The fnlwgt feature is not needed for our prediction. Let us delete it.")
-del dataset['fnlwgt']
-del headerNames[2]
+
+
+print('Downloading Data...')
+#----Wine Dataset----
+#headerNames = ['class', 'Alcohol', 'Malic acid', 'Ash', 'Alcalinity of ash  ', 'Magnesium', 'Total phenols', 'Flavanoids', 'Nonflavanoid phenols', 'Proanthocyanins', 'Color intensity', 'Hue', 'OD280_OD315 of diluted wines', 'Proline']
+#dataset = pandas.read_csv('http://archive.ics.uci.edu/ml/machine-learning-databases/wine/wine.data', header=None, sep=',', names=headerNames)
+#--------------------
+#-----Wine Quelity dataset------
+dataset = pandas.read_csv('http://archive.ics.uci.edu/ml/machine-learning-databases/wine-quality/winequality-white.csv', header=0, sep=';')
+dataset['class'] = dataset['quality']
+del dataset['quality']
+headerNames = dataset.columns
+#--------------------------------
+
+#----Car evaluation Dataset----
+#headerNames = ['buying', 'maint', 'doors', 'persons', 'lug_boot', 'safety', 'class']
+#dataset = pandas.read_csv('http://archive.ics.uci.edu/ml/machine-learning-databases/car/car.data', header=None, sep=',', names=headerNames)
+#----Car evaluation Dataset----
+
+
+print("Download complete.")
+#del dataset['fnlwgt']
+#del headerNames[2]
 print('---------------')
 print(dataset)
 
@@ -89,13 +107,14 @@ if raw_input("Do you want to see the data Overview as single figures? (y/n)") ==
     plt.show()                    
 
 
-#Now that we got an overview about the data, let uss startn preparing for machine learning.
+#Now that we got an overview about the data, let´s startn preparing for machine learning.
 #Machine learning algorithms do not like categorical values (such as labels). Multiple encoding mechanisms exist. we will use two of them.
 #One Hot Encoding:
 dataset_OneHot = dataset.copy()
 del dataset_OneHot['class']
 dataset_OneHot = pandas.get_dummies(dataset_OneHot)
 dataset_OneHot['class'] = dataset['class']
+
 
 #A linear encoding of just assigning numerical values for each category:
 dataset_Lbl = dataset.copy()
@@ -105,100 +124,50 @@ for column in dataset_Lbl.columns:
         encoders[column] = sklearn.preprocessing.LabelEncoder()
         dataset_Lbl[column] = encoders[column].fit_transform(dataset_Lbl[column])
 
-if raw_input("Do you want to see the heatmaps of your direct data correlations? (y/n)") == "y":
-    fig = plt.figure(1,figsize=(20,20))
-    sns.heatmap(dataset_OneHot.corr(), square=True, center=0, linewidth=0.5, cmap='seismic')
-    plt.title('Heatmap of One Hot Encoded Data')
-    plt.savefig('Heatmap_OneHot.png')
-    fig = plt.figure(2,figsize=(20,20))
-    sns.heatmap(dataset_Lbl.corr(), square=True, center=0, linewidth=0.5, cmap='seismic')
-    plt.title('Heatmap of Label Encoded Data')
-    plt.savefig('Heatmap_Label.png')
-    plt.show()
-
 #Now we are prepared for performing some machine learning:
-targetsOH = dataset_OneHot['class']
-targetsLBL = dataset_Lbl['class']
+targets = dataset_OneHot['class']
 del dataset_OneHot['class']
 del dataset_Lbl['class']
 
-x_train_OH, x_test_OH, y_train_OH, y_test_OH = sklearn.model_selection.train_test_split(dataset_OneHot, targetsOH, test_size = 0.4, random_state=0)
+x_train_OH, x_test_OH, y_train_OH, y_test_OH = sklearn.model_selection.train_test_split(dataset_OneHot, targets, test_size = 0.4, random_state=0)
 
-x_train_Lbl, x_test_Lbl, y_train_Lbl, y_test_Lbl = sklearn.model_selection.train_test_split(dataset_Lbl, targetsLBL, test_size = 0.4, random_state=0)
+x_train_Lbl, x_test_Lbl, y_train_Lbl, y_test_Lbl = sklearn.model_selection.train_test_split(dataset_Lbl, targets, test_size = 0.4, random_state=0)
 
-dataset_OneHot['class'] = targetsOH
-dataset_Lbl['class'] = targetsLBL
-
-#Test options and evaluation metric
+# Test options and evaluation metric
 seed = 7
-#If the dataset contains only binary data in the class, using the F1 scoring system might make more sense.
-#For comparison, we will use both the accuracy score and the F1 system.
-if dataset['class'].isin([0,1]).all():
-    scoring = ['accuracy','f1']
-else:
-    scoring = 'accuracy'
+scoring = 'accuracy'
 print("----------------------------")
 print("Starting training...")
 # Spot Check Algorithms
 models = []
-models.append(('LR', LogisticRegression(n_jobs=-1)))
+models.append(('LR', LogisticRegression()))
 models.append(('LDA', LinearDiscriminantAnalysis()))
-models.append(('KNN', KNeighborsClassifier(n_jobs=-1)))
+models.append(('KNN', KNeighborsClassifier()))
 models.append(('CART', DecisionTreeClassifier()))
 models.append(('NB', GaussianNB()))
-models.append(('SVM', SVC(max_iter=20)))
+models.append(('SVM', SVC()))
 # evaluate each model in turn
 results = []
 names = []
-if raw_input("Do you want to perform training based on OneHot Encoded data? (y/n)") == "y":
-    if dataset_OneHot['class'].isin([0,1]).all():
-        scoring = ['accuracy','f1']
-    else:
-        scoring = 'accuracy'
-    print("Algorithm comparison (based on One Hot Encoding):")
-    print("Algorithm:   ScoringModel: Mean (std)")
-    for name, model in models:
-        msg = "%s:  " % (name)
-        kfold = model_selection.KFold(n_splits=10, random_state=seed)
-        cv_results = model_selection.cross_validate(model, x_train_OH, y_train_OH, cv=kfold, scoring=scoring)
-        for scoringResult in (scoringResult for scoringResult in cv_results if scoringResult.find('test') != -1):
-            msg = "%s %s: %f (%f)" % (msg,scoringResult,cv_results[scoringResult].mean(), cv_results[scoringResult].std() )
-            #print cv_results[scoringResult]
-        results.append(cv_results)
-        names.append(name)
-        #msg = "%s:  %f  (%f)" % (name, cv_results.mean(), cv_results.std())
-        print(msg)
-    print('---------------------------------------')
-
-if raw_input("Do you want to perform training based on Label Encoded data? (y/n)") == "y":
-    print("Algorithm comparison (based on Label Encoding):")
-    print("Algorithm:   ScoringModel: Mean (std)")
-    if dataset_Lbl['class'].isin([0,1]).all():
-        scoring = ['accuracy','f1']
-    else:
-        scoring = 'accuracy'
-    for name, model in models:
-        msg = "%s:  " % (name)
-        kfold = model_selection.KFold(n_splits=10, random_state=seed)
-        cv_results = model_selection.cross_validate(model, x_train_Lbl, y_train_Lbl, cv=kfold, scoring=scoring)
-        for scoringResult in (scoringResult for scoringResult in cv_results if scoringResult.find('test') != -1):
-            msg = "%s %s: %f (%f)" % (msg,scoringResult,cv_results[scoringResult].mean(), cv_results[scoringResult].std() )
-        results.append(cv_results)
-        names.append(name)
-        #msg = "%s: %f (%f)" % (name, cv_results.mean(), cv_results.std())
-        print(msg)
-    print('---------------------------------------')
-
-if raw_input("Do you want to test different parameters for Logistic regression? (y/n)") == "y":
-    LR = LogisticRegression()
+print("Algorithm comparison (based on One Hot Encoding):")
+print("Algorithm: Mean (std)")
+for name, model in models:
     kfold = model_selection.KFold(n_splits=10, random_state=seed)
-    parametersgrid = [
-    {'C': range(0,11), 'penalty': ['l2'], 'solver': ['newton-cg', 'lbfgs', 'sag']}, 
-    {'C': range(0,11), 'penalty': ['l1','l2'], 'solver': ['liblinear', 'saga']} 
-    ]
-    #gs = model_selection.GridSearchCV(LogisticRegression(), param_grid=parametersgrid, scoring=scoring, cv=kfold, refit='f1')
-    #gs.fit(x_train_OH, y_train_OH)
+    cv_results = model_selection.cross_val_score(model, x_train_OH, y_train_OH, cv=kfold, scoring=scoring)
+    results.append(cv_results)
+    names.append(name)
+    msg = "%s: %f (%f)" % (name, cv_results.mean(), cv_results.std())
+    print(msg)
 
+print("Algorithm comparison (based on Label Encoding):")
+print("Algorithm: Mean (std)")
+for name, model in models:
+    kfold = model_selection.KFold(n_splits=10, random_state=seed)
+    cv_results = model_selection.cross_val_score(model, x_train_Lbl, y_train_Lbl, cv=kfold, scoring=scoring)
+    results.append(cv_results)
+    names.append(name)
+    msg = "%s: %f (%f)" % (name, cv_results.mean(), cv_results.std())
+    print(msg)
 
 #I want to be able to play around with the data manually during testing. The following lines will switch python to an interactive environment (exit with "quit()")
 import code
