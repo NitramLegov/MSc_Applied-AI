@@ -22,7 +22,11 @@ from sklearn.svm import SVC
 import seaborn as sns
 import math
 
+headless = False
 def main():
+    global headless
+    if (raw_input("Do you want to run the entire skript headless? (y/n)") == "y"):
+        headless = True
     dataset = loadData()
     generateOverview(dataset)
 
@@ -45,7 +49,9 @@ def main():
             encoders[column] = sklearn.preprocessing.LabelEncoder()
             dataset_Lbl[column] = encoders[column].fit_transform(dataset_Lbl[column])
 
-    heatmaps(dataset_OneHot,dataset_Lbl)
+    heatmaps(dataset_OneHot,'OneHot')
+    heatmaps(dataset_Lbl,'Label')
+
 
     #further data preparation:
     targetsOH = dataset_OneHot['class']
@@ -67,7 +73,7 @@ def main():
     gs_KNN_OH = knnParameterTrial(dataset_OneHot,'OneHot',x_train_OH,y_train_OH)
     gs_KNN_LBL = knnParameterTrial(dataset_Lbl,'Label',x_train_Lbl,y_train_Lbl)
 
-
+    SVMParameterTrial(dataset_Lbl, 'Label', x_train_Lbl, y_train_Lbl)
     import code
     code.interact(local=locals())
 
@@ -80,14 +86,19 @@ def loadData():
     print("Download complete. The fnlwgt feature is not needed for our prediction. Let us delete it.")
     del dataset['fnlwgt']
     del headerNames[2]
-    print('---------------')
+    print('------------------------------------------')
+    print
     #print(dataset)
     return dataset
 def generateOverview(dataset):
+    global headless
     #It usually is a good start to get a first idea of some statistics in the data.
     #In order to do so, we will print charts which show the distribution of the different values for all the features.
-    if raw_input("Do you want to see the data Overview? (y/n)") == "y":
-        headerNames = dataset.columns
+    print('------------------------------------------')
+    headerNames = dataset.columns
+    if ((headless) or raw_input("Do you want to see the data Overview? (y/n)") == "y"):
+        print('Generating Data overview.')
+        
         numberOfCols = 4
         numberOfRows = int(math.ceil(len(headerNames) / float(numberOfCols) ))
         #fig = plt.figure(figsize=(10,10))
@@ -98,8 +109,8 @@ def generateOverview(dataset):
                     currentHeader = i + j + (i*(numberOfCols-1))
                     if (currentHeader < len(headerNames)):
                         #ax = fig.add_subplot(numberOfRows,numberOfCols,currentHeader+1)
-                        print(currentHeader)
-                        print(headerNames[currentHeader])
+                        #print(currentHeader)
+                        #print(headerNames[currentHeader])
                     
                         #If we have values that are numerical, a histogram is a good option for plotting.
                         #For features that are categorical, a barchart is beneficial
@@ -118,11 +129,19 @@ def generateOverview(dataset):
     
         #Save it as a png file and then display it to the user. Note: plt.show() also causes the destruction routing for the plot. savefig() does not.
         plt.savefig('overview.png')
-        plt.show()
+        print('Data Overview completed. Please see overview.png.')
+        if headless:
+            plt.close()
+        else:
+            plt.show()
+    print('------------------------------------------')
+    print
     
     #Since the above code creates an overview, there should also be an option to export the figures one by one.
     #If some of the figures before have been too small, this should create a good looking figure for each feature
-    if raw_input("Do you want to see the data Overview as single figures? (y/n)") == "y":
+    print('------------------------------------------')
+    if ((headless) or raw_input("Do you want to see the data Overview as single figures? (y/n)") == "y"):
+        print ('Generating statistics for individual features.')
         for i in range(0,len(headerNames)):
             fig = plt.figure(i+1)
             if dataset.dtypes[headerNames[i]] == numpy.object:
@@ -131,27 +150,42 @@ def generateOverview(dataset):
                 dataset[headerNames[i]].hist()
                 plt.xticks(rotation="vertical")
             #dataset.groupby(headerNames[currentHeader]).size().plot(kind='bar')
-            print(i)
-            print(headerNames[i])
+            #print(i)
+            #print(headerNames[i])
             plt.subplots_adjust(left=0.08, top=0.95, bottom = 0.35, right = 0.95)
             plt.xlabel('')
             plt.title(headerNames[i])
             plt.xticks(rotation='vertical')
-            plt.savefig(headerNames[i])
-        plt.show()                    
-def heatmaps(dataset_OneHot, dataset_Lbl):
-    if raw_input("Do you want to see the heatmaps of your direct data correlations? (y/n)") == "y":
+            plt.savefig('%s.png' % (headerNames[i]))
+            print ('Statistic for Feature: %s exported to file %s.png' % (headerNames[i], headerNames[i]))
+        print ('Statsistic generation done. Please see the mentioned individual files for each feature.')
+        if headless:
+            plt.close('all')
+        else:
+            plt.show()    
+    print('------------------------------------------')
+    print               
+def heatmaps(dataset, encoding):
+    global headless
+    print('------------------------------------------')
+    if ((headless) or raw_input("Do you want to see the heatmaps of your direct data correlations? (y/n)") == "y"):
+        print('Generating the Heatmap of %s encoded data' % (encoding))
         fig = plt.figure(1,figsize=(20,20))
-        sns.heatmap(dataset_OneHot.corr(), square=True, center=0, linewidth=0.5, cmap='seismic')
-        plt.title('Heatmap of One Hot Encoded Data')
-        plt.savefig('Heatmap_OneHot.png')
-        fig = plt.figure(2,figsize=(20,20))
-        sns.heatmap(dataset_Lbl.corr(), square=True, center=0, linewidth=0.5, cmap='seismic')
-        plt.title('Heatmap of Label Encoded Data')
-        plt.savefig('Heatmap_Label.png')
-        plt.show()
+        sns.heatmap(dataset.corr(), square=True, center=0, linewidth=0.5, cmap='seismic')
+        plt.title('Heatmap of %s Encoded Data' % (encoding))
+        plt.savefig('Heatmap_%s.png' % (encoding))
+        print('Heatmap of %s encoded data done, please see file Heatmap_%s.png' % (encoding,encoding))
+        if headless:
+            plt.close()
+        else:
+            plt.show()
+    print('------------------------------------------')
+    print
 def algorithmTrialDefault(dataset, encoding, x_train, y_train):   
-    if raw_input("Do you want to perform training based on %s Encoded data? (y/n)" % (encoding)) == "y":
+    global headless
+    print('------------------------------------------')
+    if ((headless) or raw_input("Do you want to perform training based on %s Encoded data? (y/n)" % (encoding)) == "y"):
+        print('Trying different algorithms:')
         #Test options and evaluation metric
     
         #If the dataset contains only binary data in the class, using the F1 scoring system might make more sense.
@@ -165,7 +199,7 @@ def algorithmTrialDefault(dataset, encoding, x_train, y_train):
         # Spot Check Algorithms
         seed = 7
         models = []
-        models.append(('LR', LogisticRegression(n_jobs=-1)))
+        models.append(('LR', LogisticRegression()))
         models.append(('LDA', LinearDiscriminantAnalysis()))
         models.append(('KNN', KNeighborsClassifier(n_jobs=-1)))
         models.append(('CART', DecisionTreeClassifier()))
@@ -176,7 +210,7 @@ def algorithmTrialDefault(dataset, encoding, x_train, y_train):
         names = []
         print("----------------------------")
         print("Starting training...")
-        print("Algorithm comparison (based on One Hot Encoding):")
+        print("Algorithm comparison (based on %s Encoding):" % (encoding))
         print("Algorithm:   ScoringModel: Mean (std)")
         for name, model in models:
             msg = "%s:  " % (name)
@@ -189,10 +223,15 @@ def algorithmTrialDefault(dataset, encoding, x_train, y_train):
             names.append(name)
             #msg = "%s:  %f  (%f)" % (name, cv_results.mean(), cv_results.std())
             print(msg)
-        print('---------------------------------------')
+        print('Training done')
+    print('------------------------------------------')
+    print
 def logisticRegressionParameterTrial(dataset, encoding, x_train, y_train):
-    if raw_input("Do you want to test different parameters for Logistic regression (%s Encoded Data)? (y/n)" % (encoding)) == "y":
-        print('Starting training. This might take a while')
+    global headless
+    print('------------------------------------------')
+
+    if ((headless) or raw_input("Do you want to test different parameters for Logistic regression (%s Encoded Data)? (y/n)" % (encoding)) == "y"):
+        print('Starting Logistic Regression Parameter Trial based on %s encoded Data. This might take a while' % (encoding))
         if dataset['class'].isin([0,1]).all():
             scoringMetric = ['accuracy','f1']
             refitMetric = 'f1'
@@ -206,16 +245,22 @@ def logisticRegressionParameterTrial(dataset, encoding, x_train, y_train):
         {'C': range(1,11), 'penalty': ['l2'], 'solver': ['sag'], 'n_jobs': [-1]}, 
         {'C': range(1,11), 'penalty': ['l1','l2'], 'solver': ['liblinear', 'saga'], 'n_jobs': [-1]} 
         ]
-        print ('Starting Training with the following Parameter grid:')
+        print ('The following Parameter grid will be used:')
         print parametersgrid
         gs = model_selection.GridSearchCV(LogisticRegression(), n_jobs=1, param_grid=parametersgrid, scoring=scoringMetric, cv=kfold, refit=refitMetric, verbose=1)
         gs.fit(x_train, y_train)
         print('Training done, these are the best parameters:')
-        print ('Score: %f %r' % (gs.best_score_, gs.best_params_))
+        print ('Score: %f Parameters: %r' % (gs.best_score_, gs.best_params_))
+        print('------------------------------------------')
+        print
         return gs
+    print('------------------------------------------')
+    print
 def knnParameterTrial(dataset, encoding, x_train, y_train):
-    if raw_input("Do you want to test different parameters for KNN classification (%s Encoded Data)? (y/n)" % (encoding)) == "y":
-        print('Starting training. This might take a while')
+    global headless
+    print('------------------------------------------')
+    if ((headless) or raw_input("Do you want to test different parameters for KNN classification (%s Encoded Data)? (y/n)" % (encoding)) == "y"):
+        print('Starting K-neares Neighbour Parameter Trial based on %s encoded Data. This might take a while' % (encoding))
         if dataset['class'].isin([0,1]).all():
             scoringMetric = ['accuracy','f1']
             refitMetric = 'f1'
@@ -228,12 +273,43 @@ def knnParameterTrial(dataset, encoding, x_train, y_train):
         parametersgrid = [
         {'n_neighbors': range(1,len(dataset.columns), (len(dataset.columns) / 10) ), 'weights': ['uniform', 'distance'], 'n_jobs': [-1]} 
         ]
-        print ('Starting Training with the following Parameter grid:')
+        print ('The following Parameter grid will be used:')
         print parametersgrid
         gs = model_selection.GridSearchCV(KNeighborsClassifier(), n_jobs=1, param_grid=parametersgrid, scoring=scoringMetric, cv=kfold, refit=refitMetric, verbose=1)
         gs.fit(x_train, y_train)
         print('Training done, these are the best parameters:')
         print ('Score: %f %r' % (gs.best_score_, gs.best_params_))
+        print('------------------------------------------')
+        print
         return gs
-
+    print('------------------------------------------')
+    print
+def SVMParameterTrial(dataset, encoding, x_train, y_train):
+    global headless
+    print('------------------------------------------')
+    if ((headless) or raw_input("Do you want to test different parameters for Support Vector Machines? (%s Encoded Data)? (y/n)" % (encoding)) == "y"):
+        print('Starting Support Vector Machine Parameter Trial based on %s encoded Data. This might take a while' % (encoding))
+        if dataset['class'].isin([0,1]).all():
+            scoringMetric = ['accuracy','f1']
+            refitMetric = 'f1'
+        else:
+            scoringMetric = 'accuracy'
+            refitMetric = 'accuracy'
+        seed=7
+        kfold = model_selection.KFold(n_splits=5, random_state=seed)
+        parametersgrid = [
+            {'kernel': ['rbf'], 'gamma': [1e-3, 1e-4],'C': [1, 10, 100, 1000], 'max_iter': [20]},
+            {'kernel': ['linear'], 'C': [1, 10, 100, 1000], 'max_iter': [20]}
+            ]
+        print ('The following Parameter grid will be used:')
+        print parametersgrid
+        gs = model_selection.GridSearchCV(SVC(), n_jobs=1, param_grid=parametersgrid, scoring=scoringMetric, cv=kfold, refit=refitMetric, verbose=1)
+        gs.fit(x_train, y_train)
+        print('Training done, these are the best parameters:')
+        print ('Score: %f %r' % (gs.best_score_, gs.best_params_))
+        print('------------------------------------------')
+        print
+        return gs
+    print('------------------------------------------')
+    print
 if __name__ == "__main__": main()
