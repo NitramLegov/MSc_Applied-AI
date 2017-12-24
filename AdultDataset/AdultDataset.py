@@ -1,3 +1,4 @@
+from __future__ import print_function
 import sys
 from matplotlib.backends.backend_template import new_figure_manager
 import scipy
@@ -5,6 +6,7 @@ import numpy
 import matplotlib
 import pandas
 import sklearn
+#import tensorflow
 
 import pandas
 from pandas.plotting import scatter_matrix
@@ -21,33 +23,35 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.svm import SVC
 import seaborn as sns
 import math
+import numpy as np
+
+try:
+   input = raw_input
+except NameError:
+   pass
 
 headless = False
 def main():
     global headless
-    if (raw_input("Do you want to run the entire skript headless? (y/n)") == "y"):
+    if (input("Do you want to run the entire skript headless? (y/n)") == "y"):
         headless = True
     dataset = loadData()
     generateOverview(dataset)
 
     #Now that we got an overview about the data, let us start preparing for machine learning.
+    #We should get rid of any unknown values
+    dataset_flt = dataset[dataset["workclass"] != "?"]
+    dataset_flt = dataset_flt[dataset_flt["occupation"] != "?"]
+    dataset_flt = dataset_flt[dataset_flt["native-country"] != "?"]
+    del dataset_flt['education']
     #Machine learning algorithms do not like categorical values (such as labels). Multiple encoding mechanisms exist. we will use two of them.
     #One Hot Encoding:
-    dataset_OneHot = dataset.copy()
-    del dataset_OneHot['class']
-    dataset_OneHot = pandas.get_dummies(dataset_OneHot)
-    dataset_OneHot['class'] = dataset['class']
-    if len(dataset['class'].unique()) == 2:
-        dataset_OneHot['class'] = sklearn.preprocessing.LabelEncoder().fit_transform(dataset_OneHot['class'])
-
-
+    dataset_OneHot = encodeOneHot(dataset)
+    dataset_flt_OH = encodeOneHot(dataset_flt)
     #A linear encoding of just assigning numerical values for each category:
-    dataset_Lbl = dataset.copy()
-    encoders = {}
-    for column in dataset_Lbl.columns:
-        if dataset_Lbl.dtypes[column] == numpy.object:
-            encoders[column] = sklearn.preprocessing.LabelEncoder()
-            dataset_Lbl[column] = encoders[column].fit_transform(dataset_Lbl[column])
+    dataset_Lbl = encodeLabel(dataset)
+    dataset_flt_Lbl = encodeLabel(dataset_flt)
+
 
     heatmaps(dataset_OneHot,'OneHot')
     heatmaps(dataset_Lbl,'Label')
@@ -56,24 +60,47 @@ def main():
     #further data preparation:
     targetsOH = dataset_OneHot['class']
     targetsLBL = dataset_Lbl['class']
+    targets_flt_OH = dataset_flt_OH['class']
+    targets_flt_Lbl = dataset_flt_Lbl['class']
     del dataset_OneHot['class']
     del dataset_Lbl['class']
+    del dataset_flt_OH['class']
+    del dataset_flt_Lbl['class']
 
     x_train_OH, x_test_OH, y_train_OH, y_test_OH = sklearn.model_selection.train_test_split(dataset_OneHot, targetsOH, test_size = 0.4, random_state=0)
 
     x_train_Lbl, x_test_Lbl, y_train_Lbl, y_test_Lbl = sklearn.model_selection.train_test_split(dataset_Lbl, targetsLBL, test_size = 0.4, random_state=0)
 
+    x_train_flt_OH, x_test_flt_OH, y_train_flt_OH, y_test_flt_OH = sklearn.model_selection.train_test_split(dataset_flt_OH, targets_flt_OH, test_size = 0.4, random_state=0)
+
+    x_train_flt_Lbl, x_test_flt_Lbl, y_train_flt_Lbl, y_test_flt_Lbl = sklearn.model_selection.train_test_split(dataset_flt_Lbl, targets_flt_Lbl, test_size = 0.4, random_state=0)
+
     dataset_OneHot['class'] = targetsOH
     dataset_Lbl['class'] = targetsLBL
+    dataset_flt_OH['class'] = targets_flt_OH
+    dataset_flt_Lbl['class'] = targets_flt_Lbl
+
     
-    algorithmTrialDefault(dataset_OneHot,'OneHot',x_train_OH,y_train_OH)
-    algorithmTrialDefault(dataset_Lbl,'Label',x_train_Lbl,y_train_Lbl)
+    res_def_OH = algorithmTrialDefault(dataset_OneHot,'OneHot',x_train_OH,y_train_OH)
+    res_def_Lbl = algorithmTrialDefault(dataset_Lbl,'Label',x_train_Lbl,y_train_Lbl)
+    res_def_flt_OH = algorithmTrialDefault(dataset_flt_OH,'Filtered and OneHot',x_train_flt_OH,y_train_flt_OH)
+    res_def_flt_Lbl = algorithmTrialDefault(dataset_flt_Lbl,'Filtered and Label',x_train_flt_Lbl,y_train_flt_Lbl)
+
     gs_LR_OH = logisticRegressionParameterTrial(dataset_OneHot,'OneHot',x_train_OH,y_train_OH)
     gs_LR_LBL = logisticRegressionParameterTrial(dataset_Lbl,'Label',x_train_Lbl,y_train_Lbl)
+    gs_LR_flt_OH = logisticRegressionParameterTrial(dataset_flt_OH,'Filtered and OneHot',x_train_flt_OH,y_train_flt_OH)
+    gs_LR_flt_Lbl = logisticRegressionParameterTrial(dataset_flt_Lbl,'Filtered and Label',x_train_flt_Lbl,y_train_flt_Lbl)
+
     gs_KNN_OH = knnParameterTrial(dataset_OneHot,'OneHot',x_train_OH,y_train_OH)
     gs_KNN_LBL = knnParameterTrial(dataset_Lbl,'Label',x_train_Lbl,y_train_Lbl)
+    gs_KNN_flt_OH = knnParameterTrial(dataset_flt_OH,'Filtered and OneHot',x_train_flt_OH,y_train_flt_OH)
+    gs_KNN_flt_Lbl = knnParameterTrial(dataset_flt_Lbl,'Filtered and Label',x_train_flt_Lbl,y_train_flt_Lbl)
 
-    SVMParameterTrial(dataset_Lbl, 'Label', x_train_Lbl, y_train_Lbl)
+    gs_SVM_LBL = SVMParameterTrial(dataset_Lbl, 'Label', x_train_Lbl, y_train_Lbl)
+    gs_SVM_OH = SVMParameterTrial(dataset_OneHot, 'One Hot', x_train_OH, y_train_OH)
+    gs_SVM_flt_OH = SVMParameterTrial(dataset_flt_OH,'Filtered and OneHot',x_train_flt_OH,y_train_flt_OH)
+    gs_SVM_flt_Lbl = SVMParameterTrial(dataset_flt_Lbl,'Filtered and Label',x_train_flt_Lbl,y_train_flt_Lbl)
+
     import code
     code.interact(local=locals())
 
@@ -81,7 +108,7 @@ def loadData():
     #This code loads the dataset itself and defines the headers.
     headerNames = ['age', 'workclass', 'fnlwgt', 'education', 'education-num', 'marital-status', 'occupation', 'relationship', 'race', 'sex', 'capital-gain', 'capital-loss', 'hours-per-week', 'native-country', 'class']
     print('Downloading Data...')
-    dataset = pandas.read_csv('adult.data', header=None, sep=',', names=headerNames)
+    dataset = pandas.read_csv('adult.data', header=None, sep=', ', names=headerNames)
 
     print("Download complete. The fnlwgt feature is not needed for our prediction. Let us delete it.")
     del dataset['fnlwgt']
@@ -90,13 +117,29 @@ def loadData():
     print
     #print(dataset)
     return dataset
+def encodeOneHot(dataset):
+    dataset_OneHot = dataset.copy()
+    del dataset_OneHot['class']
+    dataset_OneHot = pandas.get_dummies(dataset_OneHot)
+    dataset_OneHot['class'] = dataset['class']
+    if len(dataset['class'].unique()) == 2:
+        dataset_OneHot['class'] = sklearn.preprocessing.LabelEncoder().fit_transform(dataset_OneHot['class'])
+    return dataset_OneHot
+def encodeLabel(dataset):
+    dataset_Lbl = dataset.copy()
+    encoders = {}
+    for column in dataset_Lbl.columns:
+        if dataset_Lbl.dtypes[column] == numpy.object:
+            encoders[column] = sklearn.preprocessing.LabelEncoder()
+            dataset_Lbl[column] = encoders[column].fit_transform(dataset_Lbl[column])
+    return dataset_Lbl
 def generateOverview(dataset):
     global headless
     #It usually is a good start to get a first idea of some statistics in the data.
     #In order to do so, we will print charts which show the distribution of the different values for all the features.
     print('------------------------------------------')
     headerNames = dataset.columns
-    if ((headless) or raw_input("Do you want to see the data Overview? (y/n)") == "y"):
+    if ((headless) or input("Do you want to see the data Overview? (y/n)") == "y"):
         print('Generating Data overview.')
         
         numberOfCols = 4
@@ -108,10 +151,6 @@ def generateOverview(dataset):
             for j in range(0,numberOfRows):
                     currentHeader = i + j + (i*(numberOfCols-1))
                     if (currentHeader < len(headerNames)):
-                        #ax = fig.add_subplot(numberOfRows,numberOfCols,currentHeader+1)
-                        #print(currentHeader)
-                        #print(headerNames[currentHeader])
-                    
                         #If we have values that are numerical, a histogram is a good option for plotting.
                         #For features that are categorical, a barchart is beneficial
                         if dataset.dtypes[headerNames[currentHeader]] == numpy.object:
@@ -119,7 +158,6 @@ def generateOverview(dataset):
                         else:
                             dataset[headerNames[currentHeader]].hist(ax = splts[i,j] )
                             plt.xticks(rotation="vertical")
-                        #dataset.groupby(headerNames[currentHeader]).size().plot(kind='bar', ax = splts[i,j] )
                         splts[i,j].set_title(headerNames[currentHeader])
                         splts[i,j].set_xlabel('')
         #This makes the output a little bit nicer by adjusting the borders of the subplots
@@ -140,8 +178,8 @@ def generateOverview(dataset):
     #Since the above code creates an overview, there should also be an option to export the figures one by one.
     #If some of the figures before have been too small, this should create a good looking figure for each feature
     print('------------------------------------------')
-    if ((headless) or raw_input("Do you want to see the data Overview as single figures? (y/n)") == "y"):
-        print ('Generating statistics for individual features.')
+    if ((headless) or input("Do you want to see the data Overview as single figures? (y/n)") == "y"):
+        print('Generating statistics for individual features.')
         for i in range(0,len(headerNames)):
             fig = plt.figure(i+1)
             if dataset.dtypes[headerNames[i]] == numpy.object:
@@ -157,8 +195,8 @@ def generateOverview(dataset):
             plt.title(headerNames[i])
             plt.xticks(rotation='vertical')
             plt.savefig('%s.png' % (headerNames[i]))
-            print ('Statistic for Feature: %s exported to file %s.png' % (headerNames[i], headerNames[i]))
-        print ('Statsistic generation done. Please see the mentioned individual files for each feature.')
+            print('Statistic for Feature: %s exported to file %s.png' % (headerNames[i], headerNames[i]))
+        print('Statsistic generation done. Please see the mentioned individual files for each feature.')
         if headless:
             plt.close('all')
         else:
@@ -168,7 +206,7 @@ def generateOverview(dataset):
 def heatmaps(dataset, encoding):
     global headless
     print('------------------------------------------')
-    if ((headless) or raw_input("Do you want to see the heatmaps of your direct data correlations? (y/n)") == "y"):
+    if ((headless) or input("Do you want to see the heatmaps of your direct data correlations? (y/n)") == "y"):
         print('Generating the Heatmap of %s encoded data' % (encoding))
         fig = plt.figure(1,figsize=(20,20))
         sns.heatmap(dataset.corr(), square=True, center=0, linewidth=0.5, cmap='seismic')
@@ -184,15 +222,15 @@ def heatmaps(dataset, encoding):
 def algorithmTrialDefault(dataset, encoding, x_train, y_train):   
     global headless
     print('------------------------------------------')
-    if ((headless) or raw_input("Do you want to perform training based on %s Encoded data? (y/n)" % (encoding)) == "y"):
+    if ((headless) or input("Do you want to perform training based on %s Encoded data? (y/n)" % (encoding)) == "y"):
         print('Trying different algorithms:')
         #Test options and evaluation metric
     
         #If the dataset contains only binary data in the class, using the F1 scoring system might make more sense.
         #For comparison, we will use both the accuracy score and the F1 system.
         if dataset['class'].isin([0,1]).all():
-            scoringMetric = ['accuracy','f1']
-            refitMetric = 'f1'
+            scoringMetric = ['accuracy','f1','roc_auc']
+            refitMetric = 'roc_auc'
         else:
             scoringMetric = 'accuracy'
             refitMetric = 'accuracy'
@@ -204,7 +242,7 @@ def algorithmTrialDefault(dataset, encoding, x_train, y_train):
         models.append(('KNN', KNeighborsClassifier(n_jobs=-1)))
         models.append(('CART', DecisionTreeClassifier()))
         models.append(('NB', GaussianNB()))
-        models.append(('SVM', SVC(max_iter=20)))
+        models.append(('SVM', SVC()))
         # evaluate each model in turn
         results = []
         names = []
@@ -215,26 +253,34 @@ def algorithmTrialDefault(dataset, encoding, x_train, y_train):
         for name, model in models:
             msg = "%s:  " % (name)
             kfold = model_selection.KFold(n_splits=10, random_state=seed)
+            result = {'Algorithm': name}
+            
             cv_results = model_selection.cross_validate(model, x_train, y_train, cv=kfold, scoring=scoringMetric)
             for scoringResult in (scoringResult for scoringResult in cv_results if scoringResult.find('test') != -1):
                 msg = "%s %s: %f (%f)" % (msg,scoringResult,cv_results[scoringResult].mean(), cv_results[scoringResult].std() )
+                result[scoringResult] = cv_results[scoringResult].mean()
                 #print cv_results[scoringResult]
-            results.append(cv_results)
+            cv_results['Algorithm'] = name
+            #results.append(cv_results)
+            results.append(result)
             names.append(name)
-            #msg = "%s:  %f  (%f)" % (name, cv_results.mean(), cv_results.std())
             print(msg)
-        print('Training done')
+        print('Training based on %s encoded data done. Results:' % (encoding))
+        results = pandas.DataFrame(results)
+        print (results.sort_values(by='test_roc_auc', ascending=False))
+        print('------------------------------------------')
+        return results
     print('------------------------------------------')
     print
 def logisticRegressionParameterTrial(dataset, encoding, x_train, y_train):
     global headless
     print('------------------------------------------')
 
-    if ((headless) or raw_input("Do you want to test different parameters for Logistic regression (%s Encoded Data)? (y/n)" % (encoding)) == "y"):
+    if ((headless) or input("Do you want to test different parameters for Logistic regression (%s Encoded Data)? (y/n)" % (encoding)) == "y"):
         print('Starting Logistic Regression Parameter Trial based on %s encoded Data. This might take a while' % (encoding))
         if dataset['class'].isin([0,1]).all():
-            scoringMetric = ['accuracy','f1']
-            refitMetric = 'f1'
+            scoringMetric = ['accuracy','f1','roc_auc']
+            refitMetric = 'roc_auc'
         else:
             scoringMetric = 'accuracy'
             refitMetric = 'accuracy'
@@ -246,7 +292,7 @@ def logisticRegressionParameterTrial(dataset, encoding, x_train, y_train):
         {'C': range(1,11), 'penalty': ['l1','l2'], 'solver': ['liblinear', 'saga'], 'n_jobs': [-1]} 
         ]
         print ('The following Parameter grid will be used:')
-        print parametersgrid
+        print (parametersgrid)
         gs = model_selection.GridSearchCV(LogisticRegression(), n_jobs=1, param_grid=parametersgrid, scoring=scoringMetric, cv=kfold, refit=refitMetric, verbose=1)
         gs.fit(x_train, y_train)
         print('Training done, these are the best parameters:')
@@ -259,11 +305,11 @@ def logisticRegressionParameterTrial(dataset, encoding, x_train, y_train):
 def knnParameterTrial(dataset, encoding, x_train, y_train):
     global headless
     print('------------------------------------------')
-    if ((headless) or raw_input("Do you want to test different parameters for KNN classification (%s Encoded Data)? (y/n)" % (encoding)) == "y"):
+    if ((headless) or input("Do you want to test different parameters for KNN classification (%s Encoded Data)? (y/n)" % (encoding)) == "y"):
         print('Starting K-neares Neighbour Parameter Trial based on %s encoded Data. This might take a while' % (encoding))
         if dataset['class'].isin([0,1]).all():
-            scoringMetric = ['accuracy','f1']
-            refitMetric = 'f1'
+            scoringMetric = ['accuracy','f1','roc_auc']
+            refitMetric = 'roc_auc'
         else:
             scoringMetric = 'accuracy'
             refitMetric = 'accuracy'
@@ -274,7 +320,7 @@ def knnParameterTrial(dataset, encoding, x_train, y_train):
         {'n_neighbors': range(1,len(dataset.columns), (len(dataset.columns) / 10) ), 'weights': ['uniform', 'distance'], 'n_jobs': [-1]} 
         ]
         print ('The following Parameter grid will be used:')
-        print parametersgrid
+        print (parametersgrid)
         gs = model_selection.GridSearchCV(KNeighborsClassifier(), n_jobs=1, param_grid=parametersgrid, scoring=scoringMetric, cv=kfold, refit=refitMetric, verbose=1)
         gs.fit(x_train, y_train)
         print('Training done, these are the best parameters:')
@@ -287,23 +333,28 @@ def knnParameterTrial(dataset, encoding, x_train, y_train):
 def SVMParameterTrial(dataset, encoding, x_train, y_train):
     global headless
     print('------------------------------------------')
-    if ((headless) or raw_input("Do you want to test different parameters for Support Vector Machines? (%s Encoded Data)? (y/n)" % (encoding)) == "y"):
+    if ((headless) or input("Do you want to test different parameters for Support Vector Machines? (%s Encoded Data)? (y/n)" % (encoding)) == "y"):
         print('Starting Support Vector Machine Parameter Trial based on %s encoded Data. This might take a while' % (encoding))
         if dataset['class'].isin([0,1]).all():
-            scoringMetric = ['accuracy','f1']
-            refitMetric = 'f1'
+            scoringMetric = ['accuracy','f1','roc_auc']
+            refitMetric = 'roc_auc'
         else:
             scoringMetric = 'accuracy'
             refitMetric = 'accuracy'
         seed=7
         kfold = model_selection.KFold(n_splits=5, random_state=seed)
         parametersgrid = [
-            {'kernel': ['rbf'], 'gamma': [1e-3, 1e-4],'C': [1, 10, 100, 1000], 'max_iter': [20]},
-            {'kernel': ['linear'], 'C': [1, 10, 100, 1000], 'max_iter': [20]}
+            {'kernel': ['rbf'], 'gamma': np.logspace(2,-11, base=10, num=2+11+1) ,'C': np.logspace(-3,4, base=10, num=3+4+1), 'max_iter': [-1]}
             ]
+        #parametersgrid = [
+        #    {'kernel': ['rbf'], 'gamma': np.logspace(2,-11, base=10, num=2+11+1) ,'C': np.logspace(-3,4, base=10, num=3+4+1), 'max_iter': [200]},
+        #    {'kernel': ['linear'], 'C': np.logspace(-3,4, base=10, num=3+4+1), 'max_iter': [200]}
+        #    ]
+        #parametersgrid = [
+        #    {'kernel': ['rbf'], 'gamma': [100] ,'C': [0.001]}]
         print ('The following Parameter grid will be used:')
-        print parametersgrid
-        gs = model_selection.GridSearchCV(SVC(), n_jobs=1, param_grid=parametersgrid, scoring=scoringMetric, cv=kfold, refit=refitMetric, verbose=1)
+        print (parametersgrid)
+        gs = model_selection.GridSearchCV(SVC(), n_jobs=1, param_grid=parametersgrid, scoring=scoringMetric, cv=kfold, refit=refitMetric, verbose=10)
         gs.fit(x_train, y_train)
         print('Training done, these are the best parameters:')
         print ('Score: %f %r' % (gs.best_score_, gs.best_params_))
@@ -312,4 +363,10 @@ def SVMParameterTrial(dataset, encoding, x_train, y_train):
         return gs
     print('------------------------------------------')
     print
+
 if __name__ == "__main__": main()
+
+
+
+
+
